@@ -5,7 +5,7 @@
 * [Technologies](#technologies)
 
 ## General info
-I've always would like to implemen this project in Java since the university. Unfortunately those days there wasn't such a great tools
+I've always would like to implement this project in Java since the university. Unfortunately those days there wasn't such a great tools
 i.e.chatGPT .
 	
 ## Technologies
