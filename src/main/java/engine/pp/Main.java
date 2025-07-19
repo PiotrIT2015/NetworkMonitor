@@ -1,4 +1,4 @@
-package org.example;
+package engine.pp;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -19,11 +19,11 @@ import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-// ZMIANA 1: Nazwa klasy zmieniona z NetworkMonitorGUI na Main
 public class Main extends JFrame {
 
     // Komponenty GUI
@@ -40,7 +40,6 @@ public class Main extends JFrame {
     // Wątek do monitorowania w tle
     private MonitorWorker monitorWorker;
 
-    // ZMIANA 2: Nazwa konstruktora zmieniona z NetworkMonitorGUI na Main
     public Main() {
         super("Network Monitor");
         initComponents();
@@ -237,8 +236,6 @@ public class Main extends JFrame {
                     latencySeries.addOrUpdate(new Millisecond(), update.latency);
                 } else {
                     statusIndicator.setBackground(Color.RED);
-                    // Można dodać punkt z wartością 0 lub NaN, by pokazać przerwę,
-                    // lub po prostu nie dodawać niczego.
                 }
             }
         }
@@ -247,13 +244,17 @@ public class Main extends JFrame {
         protected void done() {
             // Ta metoda jest wywoływana po zakończeniu `doInBackground`
             try {
-                get(); // Sprawdza, czy nie wystąpił wyjątek
+                get(); // Sprawdza, czy nie wystąpił wyjątek w tle
+            } catch (CancellationException e) {
+                // Oczekiwany wyjątek, gdy użytkownik naciśnie "Stop". Ignorujemy go.
+                logArea.append("Monitoring stopped by user.\n");
             } catch (InterruptedException | ExecutionException e) {
-                if (!(e.getCause() instanceof InterruptedException)) { // Ignoruj wyjątek od `Thread.sleep` przy anulowaniu
-                    logArea.append("An error occurred: " + e.getCause().getMessage() + "\n");
+                // Inne błędy, które mogły wystąpić w doInBackground
+                if (!(e.getCause() instanceof InterruptedException)) {
+                    logArea.append("An error occurred during monitoring: " + e.getCause().getMessage() + "\n");
                 }
             } finally {
-                // Przywrócenie stanu GUI
+                // Przywrócenie stanu GUI - ten blok wykona się zawsze
                 startButton.setEnabled(true);
                 stopButton.setEnabled(false);
                 hostField.setEditable(true);
@@ -263,6 +264,7 @@ public class Main extends JFrame {
                 statusIndicator.setBackground(Color.GRAY);
             }
         }
+
 
         private PingResult pingHost() {
             String[] command = isWindows
@@ -293,6 +295,8 @@ public class Main extends JFrame {
                     return new PingResult(false, -1);
                 }
             } catch (IOException | InterruptedException e) {
+                // Jeśli wątek zostanie przerwany podczas pingu (przez cancel), złapiemy tu InterruptedException
+                Thread.currentThread().interrupt(); // Przywrócenie flagi przerwania
                 return new PingResult(false, -1);
             }
         }
@@ -331,7 +335,6 @@ public class Main extends JFrame {
     public static void main(String[] args) {
         // Ustawienie wyglądu i działania aplikacji w wątku zdarzeń GUI
         SwingUtilities.invokeLater(() -> {
-            // ZMIANA 3: Tworzenie instancji klasy Main
             new Main().setVisible(true);
         });
     }
